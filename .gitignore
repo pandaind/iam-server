@@ -1,0 +1,94 @@
+# ─── Java / Maven ─────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# ─── Spring Boot ──────────────────────────────────────────────────────────────
+# Never commit real secrets — use .env files (see ops/.env.example)
+application-local.yml
+application-local.properties
+
+# ─── Node / npm ───────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ─── Next.js (frontend) ───────────────────────────────────────────────────────
+frontend/.next/
+frontend/out/
+frontend/dist/
+
+# ─── Test output ──────────────────────────────────────────────────────────────
+testing/e2e/playwright-report/
+testing/e2e/test-results/
+testing/e2e/results/
+testing/e2e/.auth/
+testing/api/results/
+testing/api/reports/
+
+# ─── Environment / secrets ────────────────────────────────────────────────────
+# Always commit .env.example, never .env
+.env
+.env.local
+.env.*.local
+ops/.env
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+# Local override compose files
+docker-compose.override.yml
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+
+.vscode/
+*.code-workspace
+
+*.swp
+*.swo
+*~
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+/tmp/*.log
+
+# ─── Build / coverage reports ─────────────────────────────────────────────────
+backend/target/site/
+coverage/
+.nyc_output/
+
+# ─── Kubernetes secrets (never commit real values) ────────────────────────────
+# Commit the example; use Sealed Secrets or ESO for real values
+ops/k8s/secrets-real.yaml
+ops/k8s/secrets.decrypted.yaml
