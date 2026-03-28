@@ -1,0 +1,55 @@
+# Kustomize overlay — dev
+# Targets a local/dev Kubernetes cluster (e.g. kind, minikube).
+# Reduces replicas and resource limits for a lightweight local environment.
+#
+# Apply:
+#   kubectl kustomize ops/k8s/overlays/dev | kubectl apply -f -
+#   -- or --
+#   ops/scripts/k8s-deploy.sh -e dev apply
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iam-system
+
+resources:
+  - ../../namespace.yaml
+  - ../../secrets.yaml
+  - ../../configmap.yaml
+  - ../../postgres.yaml
+  - ../../redis.yaml
+  - ../../iam-server.yaml
+  - ../../ingress.yaml
+  # HPA not needed in dev
+  # hpa.yaml not included
+
+images:
+  - name: iam-server
+    newTag: latest
+  - name: iam-frontend
+    newTag: latest
+
+patches:
+  # Scale down to 1 replica in dev
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: iam-server
+
+  # Relax resource limits for local clusters
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+    target:
+      kind: Deployment
+      name: iam-server

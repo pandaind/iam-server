@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Consent - IAM Server</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .consent-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .logo {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .client-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .scope-list {
+            margin: 20px 0;
+        }
+        .scope-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .scope-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .scope-description {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+        }
+        .btn-deny {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="consent-container">
+        <div class="logo">🔐 IAM Server</div>
+        <div class="subtitle">Authorization Consent</div>
+        
+        <div class="user-info">
+            <strong>Signed in as:</strong> <span th:text="${principalName}"></span>
+        </div>
+        
+        <div class="client-info">
+            <h3>Application Authorization Request</h3>
+            <p><strong>Client ID:</strong> <span th:text="${clientId}"></span></p>
+            <p>This application is requesting access to your account with the following permissions:</p>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Only approve if you trust this application. These permissions will allow the application to access your data as described.
+        </div>
+        
+        <div class="scope-list">
+            <h4>Requested Permissions:</h4>
+            <div th:each="scope : ${scopes}" class="scope-item">
+                <div class="scope-name" th:text="${scope.scope}"></div>
+                <div class="scope-description" th:text="${scope.description}"></div>
+            </div>
+            
+            <div th:if="${not #lists.isEmpty(previouslyApprovedScopes)}">
+                <h4>Previously Approved Permissions:</h4>
+                <div th:each="scope : ${previouslyApprovedScopes}" class="scope-item" style="background: #d4edda;">
+                    <div class="scope-name" th:text="${scope.scope}">✓</div>
+                    <div class="scope-description" th:text="${scope.description}"></div>
+                </div>
+            </div>
+        </div>
+        
+        <form method="post" action="/oauth2/authorize">
+            <input type="hidden" name="client_id" th:value="${clientId}">
+            <input type="hidden" name="state" th:value="${state}">
+            
+            <div class="button-group">
+                <button type="submit" name="consent" value="approve" class="btn btn-approve">
+                    Approve Access
+                </button>
+                <button type="submit" name="consent" value="deny" class="btn btn-deny">
+                    Deny Access
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

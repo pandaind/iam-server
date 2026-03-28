@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: iam-server-testcontainers
+  
+  # DataSource configuration will be handled by @ServiceConnection
+  # TestContainers will automatically configure the datasource
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # Redis configuration will be handled by @ServiceConnection
+  # TestContainers will automatically configure Redis connection
+  
+  session:
+    store-type: redis
+    timeout: 30m
+
+app:
+  jwt:
+    secret: testContainersSecretKeyForJwtTokenGeneration2024!
+    expiration: 3600000 # 1 hour for tests
+    refresh-expiration: 7200000 # 2 hours for tests
+  
+  security:
+    headers:
+      enabled: false  # Disable security headers filter in testcontainers tests
+    password:
+      min-length: 8
+      require-uppercase: true
+      require-lowercase: true
+      require-numbers: true
+      require-special-chars: true
+    
+    session:
+      max-sessions: 5
+      timeout: 1800
+
+logging:
+  level:
+    com.vibes.iam: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.testcontainers: INFO
+    org.springframework.test: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

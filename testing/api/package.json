@@ -1,0 +1,16 @@
+{
+  "name": "iam-api-tests",
+  "version": "1.0.0",
+  "description": "Postman / Newman API tests for IAM Server",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:local",
+    "test:local": "newman run iam-server.postman_collection.json -e iam-local.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export results/report.html",
+    "test:docker": "newman run iam-server.postman_collection.json -e iam-docker.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export results/report-docker.html",
+    "test:ci": "newman run iam-server.postman_collection.json -e iam-local.postman_environment.json --reporters cli,junit --reporter-junit-export results/junit.xml --bail"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

@@ -1,0 +1,1987 @@
+{
+  "info": {
+    "name": "IAM Server API",
+    "_postman_id": "iam-server-api-collection-v2",
+    "description": "Comprehensive API test collection for the IAM Server. 55+ tests across 10 folders covering all endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "actuatorUrl",
+      "value": "http://localhost:8080/api/v1/actuator"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@123"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "adminUserId",
+      "value": ""
+    },
+    {
+      "key": "testRoleId",
+      "value": ""
+    },
+    {
+      "key": "testPermId",
+      "value": ""
+    },
+    {
+      "key": "testUserId",
+      "value": ""
+    },
+    {
+      "key": "tokenBeforeLogout",
+      "value": ""
+    },
+    {
+      "key": "refreshBeforeLogout",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Public Endpoints",
+      "item": [
+        {
+          "name": "GET /public/health -- 200 status UP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status is UP', () => pm.expect(pm.response.json().status).to.eql('UP'));",
+                  "pm.test('Has service field', () => pm.expect(pm.response.json()).to.have.property('service'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/public/health"
+          }
+        },
+        {
+          "name": "GET /public/info -- 200 features array",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has features array', () => pm.expect(pm.response.json().features).to.be.an('array').and.not.empty);",
+                  "pm.test('Has version', () => pm.expect(pm.response.json()).to.have.property('version'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/public/info"
+          }
+        },
+        {
+          "name": "GET /public/capabilities -- auth+authz+oauth2 blocks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('authentication.jwt true', () => pm.expect(pm.response.json().authentication.jwt).to.be.true);",
+                  "pm.test('Has authorization', () => pm.expect(pm.response.json()).to.have.property('authorization'));",
+                  "pm.test('Has oauth2Endpoints', () => pm.expect(pm.response.json()).to.have.property('oauth2Endpoints'));",
+                  "pm.test('accountLocking is true', () => pm.expect(pm.response.json().security.accountLocking).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/public/capabilities"
+          }
+        },
+        {
+          "name": "GET /actuator/health -- DB component UP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('DB component UP', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('UP'); pm.expect(j.components.db.status).to.eql('UP'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{actuatorUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Authentication",
+      "item": [
+        {
+          "name": "POST /auth/login -- 200 captures tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has accessToken', () => { const j = pm.response.json(); pm.expect(j.accessToken).to.be.a('string').and.not.empty; pm.collectionVariables.set('accessToken', j.accessToken); pm.collectionVariables.set('refreshToken', j.refreshToken); if (j.user && j.user.id) pm.collectionVariables.set('adminUserId', j.user.id.toString()); });",
+                  "pm.test('Token type is Bearer', () => pm.expect(pm.response.json().tokenType).to.eql('Bearer'));",
+                  "pm.test('Has refreshToken', () => pm.expect(pm.response.json()).to.have.property('refreshToken'));",
+                  "pm.test('expiresIn > 0', () => pm.expect(pm.response.json().expiresIn).to.be.above(0));",
+                  "pm.test('User has id+username', () => { const u = pm.response.json().user; pm.expect(u).to.have.property('id'); pm.expect(u).to.have.property('username'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/login -- 401 invalid credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"notauser\",\"password\":\"wrongpassword\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/login -- 401 wrong password no user enumeration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 not 404 no user enumeration', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"WrongPass@1\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/login -- 400 missing fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/refresh -- 200 new tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New accessToken', () => { const j = pm.response.json(); pm.expect(j.accessToken).to.be.a('string').and.not.empty; pm.collectionVariables.set('accessToken', j.accessToken); pm.collectionVariables.set('refreshToken', j.refreshToken); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh?refreshToken={{refreshToken}}"
+          }
+        },
+        {
+          "name": "GET /users -- 401 no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 without auth header', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Users",
+      "item": [
+        {
+          "name": "GET /users -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated content', () => { const j = pm.response.json(); pm.expect(j.content).to.be.an('array'); pm.expect(j).to.have.property('totalElements'); pm.expect(j).to.have.property('totalPages'); });",
+                  "pm.test('Admin exists', () => pm.expect(pm.response.json().totalElements).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users?page=0&size=10"
+          }
+        },
+        {
+          "name": "GET /users?sort=username,asc -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array content', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users?page=0&size=5&sort=username,asc"
+          }
+        },
+        {
+          "name": "POST /users -- 201 create testuser",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('User created', () => { const j = pm.response.json(); pm.expect(j.username).to.eql('testuser_newman'); pm.expect(j.email).to.eql('testuser_newman@example.com'); pm.expect(j.enabled).to.be.true; pm.collectionVariables.set('testUserId', j.id.toString()); });",
+                  "pm.test('No password in response', () => pm.expect(pm.response.json()).to.not.have.property('password'));",
+                  "",
+                  "// Handle 409 Conflict: resource exists from a previous run — look up its ID",
+                  "if (pm.response.code === 409) {",
+                  "  pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('baseUrl') + '/users?page=0&size=200',",
+                  "    method: 'GET',",
+                  "    header: [{ key: 'Authorization', value: 'Bearer ' + pm.collectionVariables.get('accessToken') }]",
+                  "  }, function(err, res) {",
+                  "    if (err || res.code !== 200) { console.error('Lookup failed:', err); return; }",
+                  "    const data = res.json();",
+                  "    const items = Array.isArray(data) ? data : (data.content || []);",
+                  "    const found = items.find(x => x.username === 'testuser_newman');",
+                  "    if (found) {",
+                  "      pm.collectionVariables.set('testUserId', found.id.toString());",
+                  "      console.log('409: found existing testUserId =', found.id);",
+                  "    }",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"testuser_newman\",\"email\":\"testuser_newman@example.com\",\"password\":\"Test@1234\",\"firstName\":\"Newman\",\"lastName\":\"Test\"}"
+            },
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "POST /users -- 409 duplicate username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 conflict', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"testuser_newman\",\"email\":\"dup@example.com\",\"password\":\"Test@1234\",\"firstName\":\"Dup\",\"lastName\":\"User\"}"
+            },
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "GET /users/:id -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct id', () => pm.expect(pm.response.json().id.toString()).to.eql(pm.collectionVariables.get('testUserId')));",
+                  "pm.test('No password field', () => pm.expect(pm.response.json()).to.not.have.property('password'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}"
+          }
+        },
+        {
+          "name": "GET /users/999999 -- 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/999999"
+          }
+        },
+        {
+          "name": "GET /users/username/testuser_newman -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct username', () => pm.expect(pm.response.json().username).to.eql('testuser_newman'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/username/testuser_newman"
+          }
+        },
+        {
+          "name": "GET /users/username/unknownxyz -- 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 for unknown username', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/username/xyznobody1z9z"
+          }
+        },
+        {
+          "name": "GET /users/role/USER -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/role/USER"
+          }
+        },
+        {
+          "name": "PUT /users/:id -- 200 updated firstName",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('firstName updated', () => pm.expect(pm.response.json().firstName).to.eql('UpdatedFirst'));",
+                  "pm.test('No password in response', () => pm.expect(pm.response.json()).to.not.have.property('password'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"testuser_newman\",\"firstName\":\"UpdatedFirst\",\"lastName\":\"Test\",\"email\":\"testuser_newman@example.com\"}"
+            },
+            "url": "{{baseUrl}}/users/{{testUserId}}"
+          }
+        },
+        {
+          "name": "POST /users/:id/disable -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}/disable"
+          }
+        },
+        {
+          "name": "POST /users/:id/enable -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}/enable"
+          }
+        },
+        {
+          "name": "POST /users/:id/unlock -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}/unlock"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Roles",
+      "item": [
+        {
+          "name": "GET /roles -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has content array', () => pm.expect(pm.response.json().content).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles"
+          }
+        },
+        {
+          "name": "GET /roles/active -- 200 all active",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('All active', () => pm.response.json().forEach(r => pm.expect(r.active).to.be.true));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/active"
+          }
+        },
+        {
+          "name": "POST /roles -- 201 create test role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Role created', () => { const j = pm.response.json(); pm.expect(j.name).to.eql('ROLE_NEWMAN_TEST'); pm.collectionVariables.set('testRoleId', j.id.toString()); });",
+                  "",
+                  "// Handle 409 Conflict: resource exists from a previous run — look up its ID",
+                  "if (pm.response.code === 409) {",
+                  "  pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('baseUrl') + '/roles',",
+                  "    method: 'GET',",
+                  "    header: [{ key: 'Authorization', value: 'Bearer ' + pm.collectionVariables.get('accessToken') }]",
+                  "  }, function(err, res) {",
+                  "    if (err || res.code !== 200) { console.error('Lookup failed:', err); return; }",
+                  "    const data = res.json();",
+                  "    const items = Array.isArray(data) ? data : (data.content || []);",
+                  "    const found = items.find(x => x.name === 'ROLE_NEWMAN_TEST');",
+                  "    if (found) {",
+                  "      pm.collectionVariables.set('testRoleId', found.id.toString());",
+                  "      console.log('409: found existing testRoleId =', found.id);",
+                  "    }",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"ROLE_NEWMAN_TEST\",\"description\":\"Automated test role\"}"
+            },
+            "url": "{{baseUrl}}/roles"
+          }
+        },
+        {
+          "name": "POST /roles -- 409 duplicate name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"ROLE_NEWMAN_TEST\",\"description\":\"Duplicate\"}"
+            },
+            "url": "{{baseUrl}}/roles"
+          }
+        },
+        {
+          "name": "GET /roles/:id -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct role', () => pm.expect(pm.response.json().id.toString()).to.eql(pm.collectionVariables.get('testRoleId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}"
+          }
+        },
+        {
+          "name": "GET /roles/name/ROLE_NEWMAN_TEST -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct name', () => pm.expect(pm.response.json().name).to.eql('ROLE_NEWMAN_TEST'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/name/ROLE_NEWMAN_TEST"
+          }
+        },
+        {
+          "name": "GET /roles/999999 -- 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/999999"
+          }
+        },
+        {
+          "name": "PUT /roles/:id -- 200 updated description",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Description updated', () => pm.expect(pm.response.json().description).to.eql('Updated description'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"ROLE_NEWMAN_TEST\",\"description\":\"Updated description\"}"
+            },
+            "url": "{{baseUrl}}/roles/{{testRoleId}}"
+          }
+        },
+        {
+          "name": "POST /roles/:id/deactivate -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}/deactivate"
+          }
+        },
+        {
+          "name": "POST /roles/:id/activate -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}/activate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Permissions",
+      "item": [
+        {
+          "name": "GET /permissions -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has content array', () => { pm.expect(pm.response.json().content).to.be.an('array'); pm.expect(pm.response.json()).to.have.property('totalElements'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions"
+          }
+        },
+        {
+          "name": "GET /permissions/all -- 200 non-empty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Non-empty array', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/all"
+          }
+        },
+        {
+          "name": "POST /permissions -- 201 create test perm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Permission created', () => { const j = pm.response.json(); pm.expect(j.name).to.eql('NEWMAN_TEST_PERM'); pm.collectionVariables.set('testPermId', j.id.toString()); });",
+                  "",
+                  "// Handle 409 Conflict: resource exists from a previous run — look up its ID",
+                  "if (pm.response.code === 409) {",
+                  "  pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('baseUrl') + '/permissions',",
+                  "    method: 'GET',",
+                  "    header: [{ key: 'Authorization', value: 'Bearer ' + pm.collectionVariables.get('accessToken') }]",
+                  "  }, function(err, res) {",
+                  "    if (err || res.code !== 200) { console.error('Lookup failed:', err); return; }",
+                  "    const data = res.json();",
+                  "    const items = Array.isArray(data) ? data : (data.content || []);",
+                  "    const found = items.find(x => x.name === 'NEWMAN_TEST_PERM');",
+                  "    if (found) {",
+                  "      pm.collectionVariables.set('testPermId', found.id.toString());",
+                  "      console.log('409: found existing testPermId =', found.id);",
+                  "    }",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions?name=NEWMAN_TEST_PERM&description=Newman+test&resource=test&action=read"
+          }
+        },
+        {
+          "name": "GET /permissions/:id -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct id', () => pm.expect(pm.response.json().id.toString()).to.eql(pm.collectionVariables.get('testPermId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/{{testPermId}}"
+          }
+        },
+        {
+          "name": "GET /permissions/name/NEWMAN_TEST_PERM -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Correct name', () => pm.expect(pm.response.json().name).to.eql('NEWMAN_TEST_PERM'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/name/NEWMAN_TEST_PERM"
+          }
+        },
+        {
+          "name": "GET /permissions/resource/test -- 200 filtered",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has test resource', () => pm.expect(pm.response.json().some(p => p.resource === 'test')).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/resource/test"
+          }
+        },
+        {
+          "name": "GET /permissions/action/read -- 200 all read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All action=read', () => pm.response.json().forEach(p => pm.expect(p.action).to.eql('read')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/action/read"
+          }
+        },
+        {
+          "name": "PUT /permissions/:id -- 200 updated description",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Description updated', () => pm.expect(pm.response.json().description).to.eql('Updated desc'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/{{testPermId}}?name=NEWMAN_TEST_PERM&description=Updated+desc&resource=test&action=read"
+          }
+        },
+        {
+          "name": "POST /roles/:id/permissions/NEWMAN_TEST_PERM -- 200 assign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}/permissions/NEWMAN_TEST_PERM"
+          }
+        },
+        {
+          "name": "DELETE /roles/:id/permissions/NEWMAN_TEST_PERM -- 200 revoke",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}/permissions/NEWMAN_TEST_PERM"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Sessions",
+      "item": [
+        {
+          "name": "GET /sessions/my -- 200 array with fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Session fields present', () => { const s = pm.response.json(); if (s.length > 0) { pm.expect(s[0]).to.have.property('sessionId'); pm.expect(s[0]).to.have.property('ipAddress'); pm.expect(s[0]).to.have.property('createdAt'); pm.expect(s[0]).to.have.property('active'); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sessions/my"
+          }
+        },
+        {
+          "name": "GET /sessions/user/admin -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sessions/user/admin"
+          }
+        },
+        {
+          "name": "DELETE /sessions/user/admin/all -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/sessions/user/admin/all"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Security & Password",
+      "item": [
+        {
+          "name": "GET /security/password-policy -- 200 all fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has all policy fields', () => { const j = pm.response.json(); pm.expect(j).to.have.property('minLength'); pm.expect(j).to.have.property('requireUppercase'); pm.expect(j).to.have.property('requireLowercase'); pm.expect(j).to.have.property('requireNumbers'); pm.expect(j).to.have.property('requireSpecialChars'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/security/password-policy"
+          }
+        },
+        {
+          "name": "POST /security/validate-password -- 200 strong valid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('valid=true', () => pm.expect(pm.response.json().valid).to.be.true);",
+                  "pm.test('Has strength', () => pm.expect(pm.response.json()).to.have.property('strength'));",
+                  "pm.test('Errors array present', () => pm.expect(pm.response.json().errors).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\":\"V3ryStr0ng!Passw0rd\"}"
+            },
+            "url": "{{baseUrl}}/security/validate-password"
+          }
+        },
+        {
+          "name": "POST /security/validate-password -- 200 weak fails",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('valid=false for weak password', () => pm.expect(pm.response.json().valid).to.be.false);",
+                  "pm.test('Errors non-empty', () => pm.expect(pm.response.json().errors.length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\":\"abc\"}"
+            },
+            "url": "{{baseUrl}}/security/validate-password"
+          }
+        },
+        {
+          "name": "GET /security/account-status/admin -- 200 not locked",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('locked=false', () => pm.expect(pm.response.json().locked).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/security/account-status/admin"
+          }
+        },
+        {
+          "name": "POST /security/change-password -- 400 wrong old password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 for wrong old password', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"oldPassword\":\"WrongPass@1\",\"newPassword\":\"NewV3ryStr0ng!Pass\"}"
+            },
+            "url": "{{baseUrl}}/security/change-password"
+          }
+        },
+        {
+          "name": "POST /security/force-password-reset/testuser_newman -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has message', () => pm.expect(pm.response.json()).to.have.property('message'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/security/force-password-reset/testuser_newman"
+          }
+        },
+        {
+          "name": "POST /security/force-password-reset -- 401 unauthenticated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 without auth', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/security/force-password-reset/admin"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Audit Logs",
+      "item": [
+        {
+          "name": "GET /audit -- 200 paginated with fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated content', () => { const j = pm.response.json(); pm.expect(j.content).to.be.an('array'); pm.expect(j).to.have.property('totalElements'); });",
+                  "pm.test('Audit entries have required fields', () => { const logs = pm.response.json().content; if (logs.length > 0) { pm.expect(logs[0]).to.have.property('action'); pm.expect(logs[0]).to.have.property('username'); pm.expect(logs[0]).to.have.property('timestamp'); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/audit?page=0&size=10"
+          }
+        },
+        {
+          "name": "GET /audit/failed -- 200 all success=false",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All failures', () => pm.response.json().content.forEach(log => pm.expect(log.success).to.be.false));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/audit/failed"
+          }
+        },
+        {
+          "name": "GET /audit/action/LOGIN -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has content', () => pm.expect(pm.response.json()).to.have.property('content'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/audit/action/LOGIN"
+          }
+        },
+        {
+          "name": "GET /audit/user/:adminUserId -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has content', () => pm.expect(pm.response.json()).to.have.property('content'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/audit/user/{{adminUserId}}"
+          }
+        },
+        {
+          "name": "GET /audit/date-range -- 200 paginated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has content', () => pm.expect(pm.response.json()).to.have.property('content'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/audit/date-range?startDate=2020-01-01T00:00:00&endDate=2099-12-31T23:59:59"
+          }
+        },
+        {
+          "name": "GET /audit -- 401 no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/audit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Token Blacklist & Logout",
+      "item": [
+        {
+          "name": "Setup re-login for blacklist test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('tokenBeforeLogout', j.accessToken);",
+                  "pm.collectionVariables.set('refreshBeforeLogout', j.refreshToken);",
+                  "pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST /auth/logout -- 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBeforeLogout}}"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/logout?refreshToken={{refreshBeforeLogout}}"
+          }
+        },
+        {
+          "name": "GET /users -- 401 blacklisted token rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 blacklisted token rejected', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBeforeLogout}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "POST /auth/refresh -- 400or401 blacklisted refresh rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 or 401 refresh blacklisted', () => pm.expect(pm.response.code).to.be.oneOf([400, 401]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh?refreshToken={{refreshBeforeLogout}}"
+          }
+        },
+        {
+          "name": "Setup re-login after blacklist test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Cleanup",
+      "item": [
+        {
+          "name": "Re-login before cleanup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "if (j.refreshToken) pm.collectionVariables.set('refreshToken', j.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{adminUsername}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "DELETE /permissions/:id -- 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect([204, 404]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.collectionVariables.get('testPermId');",
+                  "if (!id || id.trim() === '') {",
+                  "  console.log('Skipping cleanup: testPermId is not set');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/permissions/{{testPermId}}"
+          }
+        },
+        {
+          "name": "DELETE /roles/:id -- 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect([204, 404]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.collectionVariables.get('testRoleId');",
+                  "if (!id || id.trim() === '') {",
+                  "  console.log('Skipping cleanup: testRoleId is not set');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/roles/{{testRoleId}}"
+          }
+        },
+        {
+          "name": "DELETE /users/:id -- 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect([204, 404]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.collectionVariables.get('testUserId');",
+                  "if (!id || id.trim() === '') {",
+                  "  console.log('Skipping cleanup: testUserId is not set');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}"
+          }
+        },
+        {
+          "name": "GET /users/:id after delete -- 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 after delete', () => pm.expect([404, 204]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.collectionVariables.get('testUserId');",
+                  "if (!id || id.trim() === '') {",
+                  "  console.log('Skipping cleanup: testUserId is not set');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{testUserId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

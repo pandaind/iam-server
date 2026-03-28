@@ -1,0 +1,73 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PROD profile — production deployment with PostgreSQL
+# Activated by: -Dspring.profiles.active=prod  or  SPRING_PROFILES_ACTIVE=prod
+#
+# Required environment variables (no defaults — startup fails without them):
+#   JWT_SECRET            — 32+ byte cryptographically random value
+#   DB_USERNAME           — PostgreSQL username
+#   DB_PASSWORD           — PostgreSQL password
+#   CORS_ALLOWED_ORIGINS  — comma-separated list of allowed frontend origins
+#                           e.g. https://app.example.com,https://admin.example.com
+# ──────────────────────────────────────────────────────────────────────────────
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:iamdb}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  h2:
+    console:
+      enabled: false
+
+app:
+  jwt:
+    # Override base default — production MUST provide JWT_SECRET via env var.
+    secret: ${JWT_SECRET}
+
+  cors:
+    # Must be set explicitly for production. No wildcard allowed.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+  rate-limiting:
+    auth-requests-per-minute: 20
+
+logging:
+  level:
+    com.vibes.iam: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /app/logs/iam-server.log
+
+management:
+  endpoints:
+    web:
+      # Only health and info are publicly reachable; all others require ADMIN role.
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized

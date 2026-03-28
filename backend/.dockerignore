@@ -1,0 +1,69 @@
+# Docker ignore file for IAM Server
+
+# Version control
+.git
+.gitignore
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts
+target/
+!target/iam-server-*.jar
+build/
+out/
+*.log
+
+# Test reports
+test-results/
+coverage/
+
+# Documentation
+*.md
+docs/
+CHANGELOG.md
+
+# Scripts (not needed in container)
+scripts/
+.env
+.env.*
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Kubernetes manifests
+k8s/
+helm/
+
+# Maven wrapper (keep the executable)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Application specific
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Test containers
+.testcontainers/

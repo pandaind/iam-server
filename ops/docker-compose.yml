@@ -1,0 +1,184 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# IAM Server – Docker Compose
+#
+# Profiles:
+#   (none)         core services: postgres + iam-server + frontend
+#   redis          add Redis session storage
+#   observability  add Prometheus + Grafana
+#   proxy          add Nginx reverse proxy
+#   full           everything
+#
+# Quick start:
+#   cp .env.example .env    # fill in secrets
+#   docker compose up -d
+#
+# With observability:
+#   docker compose --profile observability up -d
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: iam-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-iamdb}
+      POSTGRES_USER: ${POSTGRES_USER:-iam_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iam_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - iam-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iam_user} -d ${POSTGRES_DB:-iamdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Redis (optional – activate with --profile redis) ────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: iam-redis
+    profiles: [redis, full]
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - iam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ── IAM Backend ─────────────────────────────────────────────────────────────
+  iam-server:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: iam-server
+    ports:
+      - "${IAM_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-iamdb}
+      DB_USERNAME: ${POSTGRES_USER:-iam_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-iam_password}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      LOGGING_LEVEL_COM_VIBES_IAM: ${LOG_LEVEL:-INFO}
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: WARN
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iam-network
+    healthcheck:
+      # Context path is /api/v1, so actuator lives at /api/v1/actuator/health
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: iam-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api/v1}
+    depends_on:
+      iam-server:
+        condition: service_healthy
+    networks:
+      - iam-network
+    restart: unless-stopped
+
+  # ── Nginx (optional – activate with --profile proxy) ────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: iam-nginx
+    profiles: [proxy, full]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      iam-server:
+        condition: service_healthy
+    networks:
+      - iam-network
+    restart: unless-stopped
+
+  # ── Prometheus (optional – activate with --profile observability) ────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: iam-prometheus
+    profiles: [observability, full]
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    networks:
+      - iam-network
+    restart: unless-stopped
+
+  # ── Grafana (optional – activate with --profile observability) ──────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: iam-grafana
+    profiles: [observability, full]
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"   # port 3001 avoids conflict with frontend on 3000
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - iam-network
+    restart: unless-stopped
+
+networks:
+  iam-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,103 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: iam-server
+  
+  profiles:
+    active: docker
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:iamdb}
+    username: ${DB_USERNAME:iam_user}
+    password: ${DB_PASSWORD:iam_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
+  
+  # Redis configuration for sessions (optional)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  
+  session:
+    store-type: redis
+    timeout: 30m
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: 86400000 # 24 hours
+    refresh-expiration: 604800000 # 7 days
+
+  cors:
+    # Set CORS_ALLOWED_ORIGINS in .env to match your frontend origin.
+    # Example: http://localhost:3000 or https://app.example.com
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+  rate-limiting:
+    enabled: true
+    auth-requests-per-minute: 20
+
+  security:
+    password:
+      min-length: 8
+      require-uppercase: true
+      require-lowercase: true
+      require-numbers: true
+      require-special-chars: true
+
+    session:
+      max-sessions: 5
+      timeout: 1800 # 30 minutes
+
+logging:
+  level:
+    com.vibes.iam: ${LOGGING_LEVEL_COM_VIBES_IAM:INFO}
+    org.springframework.security: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY:WARN}
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /app/logs/iam-server.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics}
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

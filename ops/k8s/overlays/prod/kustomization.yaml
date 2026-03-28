@@ -1,0 +1,72 @@
+# Kustomize overlay — prod
+# Targets the production cluster.
+# Uses the production image registry, full replicas, and tighter resource bounds.
+#
+# BEFORE APPLYING:
+#   1. Fill in ops/k8s/secrets.yaml (or use Sealed Secrets / ESO).
+#   2. Set REGISTRY and TAG below (or via --set-image at deploy time).
+#   3. Ensure ops/k8s/ingress.yaml has the correct prod domain.
+#
+# Apply:
+#   ops/scripts/k8s-deploy.sh -e prod -t <git-sha> apply
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iam-system
+
+resources:
+  - ../../namespace.yaml
+  - ../../secrets.yaml
+  - ../../configmap.yaml
+  - ../../postgres.yaml
+  - ../../redis.yaml
+  - ../../iam-server.yaml
+  - ../../ingress.yaml
+  - ../../hpa.yaml
+
+images:
+  # Replace <registry> and <tag> before deploying, or let k8s-deploy.sh handle it.
+  - name: iam-server
+    # newName: ghcr.io/your-org/iam-server   # uncomment and set for production registry
+    newTag: latest
+  - name: iam-frontend
+    # newName: ghcr.io/your-org/iam-frontend  # uncomment and set for production registry
+    newTag: latest
+
+patches:
+  # 3 replicas minimum for production HA
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: iam-server
+
+  # Production resource allocations
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+    target:
+      kind: Deployment
+      name: iam-server
+
+  # HPA: 3-10 replicas in production
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 10
+    target:
+      kind: HorizontalPodAutoscaler
+      name: iam-server-hpa

@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: iam-server-test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+app:
+  jwt:
+    secret: testSecretKeyForJwtTokenGenerationInTestEnvironment
+    expiration: 3600000 # 1 hour for tests
+    refresh-expiration: 7200000 # 2 hours for tests
+
+  cors:
+    allowed-origins: http://localhost:3000
+
+  rate-limiting:
+    enabled: false  # disabled in tests to avoid interference with rapid test calls
+
+  security:
+    headers:
+      enabled: false  # Disable security headers filter in tests to allow H2 console
+    password:
+      min-length: 8
+      require-uppercase: true
+      require-lowercase: true
+      require-numbers: true
+      require-special-chars: true
+    
+    session:
+      max-sessions: 5
+      timeout: 1800
+
+logging:
+  level:
+    com.vibes.iam: WARN
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.springframework.web: WARN
+    org.springframework.test: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,66 @@
+# Kustomize overlay — staging
+# Targets a shared staging/QA cluster.
+# Mirrors production topology with reduced replicas and resources.
+#
+# Apply:
+#   kubectl kustomize ops/k8s/overlays/staging | kubectl apply -f -
+#   -- or --
+#   ops/scripts/k8s-deploy.sh -e staging apply
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iam-system
+
+resources:
+  - ../../namespace.yaml
+  - ../../secrets.yaml
+  - ../../configmap.yaml
+  - ../../postgres.yaml
+  - ../../redis.yaml
+  - ../../iam-server.yaml
+  - ../../ingress.yaml
+  - ../../hpa.yaml
+
+images:
+  - name: iam-server
+    newTag: latest
+  - name: iam-frontend
+    newTag: latest
+
+patches:
+  # 2 replicas for staging (enough for HA validation)
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: iam-server
+
+  # Moderate resources
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+    target:
+      kind: Deployment
+      name: iam-server
+
+  # Relax HPA for staging — allow low replica counts
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5
+    target:
+      kind: HorizontalPodAutoscaler
+      name: iam-server-hpa
